@@ -1,0 +1,924 @@
+<?php if (isset($this->_message)) {
+  echo "<script type='text/javascript'> window.onload = function() {document.getElementById('edita').style.display = 'block';
+    document.getElementById('ficha').style.display = 'none';
+    document.getElementById('afic').classList.remove('active');
+     document.getElementById('amod').classList.add('active');}
+   </script>";
+} 
+if (isset($this->_message)  and $this->_message['error']==33) { echo
+  "<script type='text/javascript'> window.onload = function() {
+      document.getElementById('edita').style.display = 'none';
+      document.getElementById('ficha').style.display = 'none';
+      document.getElementById('horario').style.display = 'block';
+      document.getElementById('afic').classList.remove('active');
+      document.getElementById('amod').classList.remove('active');
+      document.getElementById('hora').classList.add('active');
+      }
+     </script>" ;}
+     if (isset($this->_message)  and $this->_message['error']==18) { echo
+      "<script type='text/javascript'> window.onload = function() {
+          document.getElementById('edita').style.display = 'none';
+          document.getElementById('ficha').style.display = 'block';
+          document.getElementById('horario').style.display = 'none';
+          document.getElementById('hora').classList.remove('active');
+          document.getElementById('amod').classList.remove('active');
+          document.getElementById('afic').classList.add('active');
+          }
+         </script>" ;}     
+?>
+<style>
+  /* Custom CSS for Excel-like table */
+  .excel-table {
+    border-collapse: collapse;
+
+    /* Remove spacing between table cells */
+    width: 100%;
+  }
+
+  .excel-table th,
+  .excel-table td {
+    padding: 4px 8px;
+    /* Adjust padding for table cells */
+    font-size: 12px;
+    /* Adjust font size */
+    border: 1px solid #ccc;
+    /* Add a border to table cells */
+    text-align: left;
+    /* Align text to the left */
+  }
+
+
+  .excel-table th {
+    background-color: #f2f2f2;
+    /* Add a background color to header cells */
+    font-weight: bold;
+    /* Make header text bold */
+  }
+
+  .excel-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+    /* Alternate row background color */
+  }
+
+  .excel-table tr:hover {
+    background-color: #e5e5e5;
+    /* Hover effect for rows */
+  }
+
+  .small-button {
+    padding: 4px 8px;
+    /* Adjust padding for smaller buttons */
+    font-size: 10px;
+    /* Adjust font size for smaller buttons */
+  }
+
+  .small-currency {
+    font-size: 80%;
+    /* Adjust the percentage to your desired size */
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Evento que se activa cuando se selecciona una carrera
+    document.getElementById('carrerasrch').addEventListener('change', function() {
+      const carreraId = this.value;
+      const materiaSelect = document.getElementById('xmateria');
+
+      // Limpiar el select de materias
+      materiaSelect.innerHTML = '<option selected value="nones">Elegir Materia</option>';
+      console.log("Datos a enviar:", {
+        id_carrera: carreraId
+      });
+
+      // Hacer la solicitud AJAX para obtener las materias de la carrera seleccionada
+      fetch('student/handleSubjectFilter', {
+          method: 'POST',
+          body: JSON.stringify({
+            id_carrera: carreraId
+          }),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          // Llenar el select de materias con los datos obtenidos
+          console.log("Respuesta de PHP cambio carrera:", data);
+
+          data.forEach(materia => {
+            const option = document.createElement('option');
+            option.value = materia.idmateria;
+            if (materia.id_materia == 0) {
+              option.textContent = materia.materia_des + ' (No disponible)';
+            } else {
+              option.textContent = materia.materia_des;
+            }
+            if (materia.id_materia == 0) {
+              option.disabled = true;
+            }
+            materiaSelect.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error('Error al obtener materias:', error);
+        });
+
+    });
+    document.getElementById('xmateria').addEventListener('change', function() {
+      const materiaId = this.value;
+      const tutorSelect = document.getElementById('xtutor');
+      tutorSelect.style.display = 'block';
+      const openModalButton = document.getElementById('tutorbtn');
+      openModalButton.style.display = 'none';
+
+      // Limpiar el select de materias
+      tutorSelect.innerHTML = '<option selected value="nones">Elegir Tutor</option>';
+      console.log("Datos a enviar:", {
+        id_materia: materiaId
+      });
+
+      // Hacer la solicitud AJAX para obtener las materias de la carrera seleccionada
+      fetch('student/handleTutorFilter', {
+          method: 'POST',
+          body: JSON.stringify({
+            id_materia: materiaId
+          }),
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          // Llenar el select de materias con los datos obtenidos
+          console.log("Respuesta de PHP tutores:", data);
+
+          data.forEach(tutor => {
+            const option = document.createElement('option');
+            option.value = tutor.id;
+            option.textContent = tutor.tutor;
+            tutorSelect.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error('Error al obtener tutores:', error);
+        });
+
+    });
+    
+    let selectedValue = ''; // Declare selectedValue globally
+let selectedMateria = ''; // Declare selectedMateria globally
+let isSeeHoraListenerAdded = false; // Flag to track if the event listener is added
+
+document.getElementById('xtutor').addEventListener('change', function () {
+  selectedValue = this.value; // Update the globally declared variable
+
+  const openModalButton = document.getElementById('tutorbtn');
+  openModalButton.style.display = 'inline-block';
+
+  const openModalHandler = function () {
+    console.log("Datos a enviar del tutor seleccionado:", { id_tutor: selectedValue });
+    fetch('student/handleTutorProfile', {
+        method: 'POST',
+        body: JSON.stringify({ id_tutor: selectedValue }),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log("Respuesta de PHP el profile:", data);
+        const tutor = data;
+        const tutorProfile = document.getElementById('tutorProfile');
+        tutorProfile.innerHTML = '';
+        document.getElementById('aboutme').textContent = '';
+
+        const imgElement = document.createElement('img');
+        imgElement.src = tutor.foto ? `http://localhost/tutor_link/public/img/profiles/${tutor.foto}.jpg` : 'http://localhost/tutor_link/public/img/profiles/profile.JFIF';
+        imgElement.className = 'img-thumbnail ml-2';
+        imgElement.alt = 'Perfil del Tutor';
+        tutorProfile.appendChild(imgElement);
+
+        document.getElementById('nameprofile').textContent = tutor.name;
+        document.getElementById('dateprofile').textContent = tutor.date;
+        if (tutor.about) {
+          document.getElementById('aboutme').innerHTML =
+            '<H5>Mi Experiencia</H5>' + '<p class = "text-left">' + tutor.about + '</p>';
+        }
+      })
+      .catch(error => {
+        console.error('Error al obtener el perfil del tutor:', error);
+      });
+  };
+
+  openModalButton.replaceWith(openModalButton.cloneNode(true));
+  const newOpenModalButton = document.getElementById('tutorbtn');
+  newOpenModalButton.addEventListener('click', openModalHandler);
+
+  if (!isSeeHoraListenerAdded) {
+    const seehoraButton = document.getElementById('seehora');
+    const seehoraHandler = function () {
+      $('#exampleModal4').modal('hide').on('hidden.bs.modal', function () {
+        $('.modal-backdrop').remove();
+        $('#exampleModal4').off('hidden.bs.modal'); // Remove the handler after it is used
+
+        console.log("Respuesta de antesPHP:", selectedValue);
+        fetch('student/getsessionsEst', {
+            method: 'POST',
+            body: JSON.stringify({ id_tutor: selectedValue }),
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log("Respuesta de PHP:", data);
+            const horariosTableBody = document.getElementById('horariosTableBody');
+            horariosTableBody.innerHTML = '';
+            data.forEach(item => {
+              const row = document.createElement('tr');
+              let button;
+              if (item.cupo <= 0) {
+                button = `<button class='btn btn-primary small-button' disabled>Sin cupo</button>`;
+              } else if (item.estado_inscripcion === 'Inscrito') {
+                button = `<button class='btn btn-primary small-button' disabled>Inscrito</button>`;
+              } else {
+                button = `<button class='btn btn-primary small-button' data-dismiss="modal" onclick='registrar(${item.id_horario})'>Registrar</button>`;
+              }
+              row.innerHTML = `<td>${item.materia_des}</td>
+                                   <td>${item.dia}</td>
+                                   <td>${item.h_inicio}</td>
+                                   <td>${item.h_final}</td>
+                                   <td>${item.cupo || 0}</td>
+                                   <td>${button}</td>`;
+              horariosTableBody.appendChild(row);
+            });
+            $('#exampleModal3').modal('show');
+          })
+          .catch(error => {
+            console.error('Error al obtener los horarios:', error);
+          });
+      });
+    };
+
+    seehoraButton.addEventListener('click', seehoraHandler);
+    isSeeHoraListenerAdded = true; // Mark the event listener as added
+  }
+});
+
+// Event listener for 'Solicitar Clase Particular'
+document.getElementById('clasespart').addEventListener('click', function () {
+  selectedMateria = document.getElementById('xmateria').value;
+
+  console.log("Datos a enviar para solicitar clase particular:", {
+    id_tutor: selectedValue,
+    id_materia: selectedMateria
+  });
+
+  fetch('student/requestPrivateClass', {
+    method: 'POST',
+    body: JSON.stringify({
+      id_tutor: selectedValue,
+      id_materia: selectedMateria
+    }),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log("Respuesta de PHP para solicitar clase particular:", data);
+    alert("Solicitud de Clase particular agregada correctamente.");
+    window.location.reload();
+  })
+  .catch(error => {
+    console.error('Error al solicitar clase particular:', error);
+  });
+});
+
+
+  });
+
+  function registrar(id_horario) {
+    fetch('student/handleEnrollment', {
+        method: 'POST',
+        body: JSON.stringify({
+          id_horario: id_horario
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Registro exitoso:', data);
+        alert('Registro exitoso');
+        window.location.reload();
+        /*fetch('student/getenrollment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('php', data);
+            actualizarTabla(data);
+          })
+
+          .catch(error => {
+            console.error('Error al obtener las inscripciones actualizadas:', error);
+          });*/
+      })
+
+      .catch(error => {
+        console.error('Error al registrar:', error);
+      });
+
+  }
+
+  function actualizarTabla(data) {
+    const tableBody = document.getElementById('productTableBodyE');
+    tableBody.innerHTML = '';
+    // Limpiar contenido previo
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      const button = ` <button class="btn btn-outline-secondary small-button" data-toggle="popover" data-trigger="focus" data-html="true" title="Tutor: ${item.tutor}" data-content="Teléfono: ${item.telefono}<br>Email: ${item.email}"> Ver </button>`;
+      const button2 = ` <button class="btn btn-outline-secondary small-button" data-toggle="modal" data-target="#exampleModal5${item.id}"> Eliminar </button>`;
+      row.innerHTML = ` <td>${item.dia}</td>
+                         <td>${item.materia_des}</td>
+                          <td>${item.h_inicio}</td>
+                           <td>${item.h_final}</td>
+                            <td>${button}</td> 
+                             <td>${button2}</td> `;
+      tableBody.appendChild(row);
+    });
+    $(document).ready(function() {
+      $('[data-toggle="popover"]').popover();
+    });
+    $('.popover-dismiss').popover({
+      trigger: 'focus'
+    })
+  }
+</script>
+<h2>Perfil de Usuario</h2>
+<div class="card text-center">
+  <div class="card-header">
+    <ul class="nav nav-pills card-header-pills">
+      <li class="nav-item">
+        <a class="nav-link active" id="afic" href="#" onclick="javascript:ficha();">Ficha </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="amod" href="#" onclick="javascript:edita();">Modificar</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="hora" href="#" onclick="javascript:horario();">Consultar Inscripciones</a>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body text-left ml-4" id="ficha" style="display: block;">
+    <div class="row col-md-10 col-lg-10">
+      <h5 class="card-title mr-3"><?php if ($this->perfil['role'] == 2) {
+                                    echo 'Tutor';
+                                  } elseif ($this->perfil['role'] == 1) {
+                                    echo 'Estudiante';
+                                  } ?></h5>
+      <div class=" col-md-4 col-lg-4  text-center mt-3 ">
+        <img src="<?php if ($this->perfil['foto'] != '') {
+                    echo BASE_URL . 'public/img/profiles/' . $this->perfil['foto'] . '.jpg';
+                  } else {
+                    echo BASE_URL . 'public/img/profiles/profile.JFIF';
+                  } ?>" class="img-thumbnail" alt="...">
+      </div>
+      <div class=" col-md-6 col-lg-6  text-center mt-3 ">
+        <h5>Datos Personales</h5>
+        <table class="table table-user-information mt-3">
+          <tbody>
+            <tr>
+              <td>Nombre:</td>
+              <td><?php echo $this->perfil['name'] . ' ' . $this->perfil['apellido']; ?></td>
+            </tr>
+            <tr>
+              <td>Inscrito:</td>
+              <td><?php echo $this->perfil['date']; ?> </td>
+            </tr>
+            <tr>
+              <td>Cedula</td>
+              <td><?php echo $this->perfil['cedula']; ?></td>
+            </tr>
+            <tr>
+            <tr>
+              <td>Email</td>
+              <td><?php echo $this->perfil['email']; ?></td>
+            </tr>
+            <?php if ($this->perfil['role'] == 2) {
+              echo '<tr>
+                        <td>Telefono</td>
+                        <td>' . $this->perfil['telefono'] . ' </td> 
+                      </tr>';
+            } elseif ($this->perfil['role'] == 1) {
+              echo '<tr>
+                        <td>Carrera</td>
+                        <td>' . $this->perfil['escuela'] . '</td>
+                      </tr>';
+            } ?>
+            </tr>
+
+          </tbody>
+        </table> 
+      </div>
+      <div class="col-md-5 col-lg-5  list-group text-left ml-3">
+      <h5>Preferencias</h5>
+      <table>
+        <thead>
+          <tr>
+            <th> </th>
+            <th></th> 
+          </tr>
+        </thead>
+        <tbody id="pr">  
+          <?php foreach ($this->myPreference  as $key => $value) { 
+            echo '<tr>' . '<td>' . $value['materia_des'] . '</td>' .
+            '<td><button class="btn btn-outline-secondary small-button" data-toggle="modal" data-target="#edit'.$value['id_preferencia'].'">Modificar</button></td>'.
+              '</tr>'.
+             '<div class="modal fade" id="edit'.$value['id_preferencia'].'" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modificar Preferencia: '.$value['materia_des'].'</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  <div class="modal-body"> 
+                    <form name="form2" method="post" action="" id="myform"> 
+                       <input type="hidden" value="'.$value['id_preferencia'].'" name="pref_id">
+                      <select class="form-control col-md-8 col-lg-8 mr-1"  name="editprefer">
+                <option selected value="nones">Elegir preferencia</option>';
+                foreach($this->preference  as $key => $value2) {
+                  echo '"<option value="' . $value2['id']. '">' . $value2['materia_des'] . "</option>";  
+                    } echo ' 
+              </select>
+                      <div class="modal-footer mt-2">
+                        <input type="submit" class="btn btn-primary" value="Confirmar" name="edpref">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>'  ;  
+          } ?> 
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-secondary btn-sm mt-4" data-toggle="modal" data-target="#modalPrefer">Agregar Preferencia</button>';
+      </div>
+      <div class="col-lg-12 col-md-12 text-right">
+       <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal2"> Eliminar Perfil</button>
+        </div>
+       
+        <div class="modal fade" id="modalPrefer" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Agregar Preferencia</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body"> 
+            <form name="form2" method="post" action="" id="myform"> 
+              <select class="form-control col-md-8 col-lg-8 mr-1"  name="prefer">
+        <option selected value="nones">Elegir preferencia</option>
+        <?php foreach ($this->preference  as $key => $value) {
+          echo  "<option value=" . $value['id']. ">" . $value['materia_des'] . "</option>"; 
+            } 
+            ?>
+      </select>
+              <div class="modal-footer mt-2">
+                <input type="submit" class="btn btn-primary" value="Agregar" name='adpref'>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+      
+    </div>
+    
+    </div>
+
+    
+    <div class="modal fade" id="exampleModal2" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Eliminar Perfil</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            Al eliminar el perfil, todos sus datos quedaran permanentemente borrados de la base de datos.
+            Seguro desea eliminar?
+            <form name="form2" method="post" action="" id="myform">
+              <input type="hidden" value="<?php echo  $this->perfil['foto'] . '.jpg'; ?>" name="pic">
+              <div class="modal-footer mt-2">
+                <input type="submit" class="btn btn-primary" value="Confirmar" name='elm'>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-body" id="edita" style="display: none;">
+    <form name="form2" method="post" action="" id="myform" style="display:block;" enctype="multipart/form-data">
+      <div class="form-group col-md-6 ">
+        <h5 class="card-title"><?php if ($this->perfil['role'] == 2) {
+                                  echo 'Tutor';
+                                } elseif ($this->perfil['role'] == 1) {
+                                  echo 'Estudiante';
+                                } ?></h5>
+        <img src="<?php if ($this->perfil['foto'] != '') {
+                    echo BASE_URL . 'public/img/profiles/' . $this->perfil['foto'] . '.jpg';
+                  } else {
+                    echo BASE_URL . 'public/img/profiles/profile.JFIF';
+                  } ?>" class="img-thumbnail" alt="...">
+
+        <img id="frame" src="" width="220px" height="auto" class="img-fluid mb-2" />
+        <input type="file" onchange="preview()" id="file" style="visibility:hidden;" name="pic" />
+        <script>
+          function preview() {
+            frame.src = URL.createObjectURL(event.target.files[0]);
+          }
+        </script>
+        <label for="file" button class="btn btn-outline-dark btn-sm btn-block">Subir Foto</label>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6 ">
+          <label for="">Nombre(s)</label>
+          <input type="text" class="form-control <?php if (isset($this->_message) and $this->_message['error'] == 1) echo 'is-invalid'; ?>" placeholder="" name="name"
+            value="<?php if (isset($this->perfil)) echo $this->perfil['name']; ?>">
+        </div>
+        <div class="form-group col-md-6">
+          <label for="">Apellido(s)</label>
+          <input type="text" class="form-control <?php if (isset($this->_message) and $this->_message['error'] == 2) echo 'is-invalid'; ?>" placeholder="" name="apell"
+            value="<?php if (isset($this->perfil)) echo $this->perfil['apellido']; ?>">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="">Cédula</label>
+          <input disabled type="text" placeholder="Introduzca C.I. EJ: V0000000000" class="form-control <?php if (isset($this->_message) and $this->_message['error'] == 3) echo 'is-invalid'; ?>" name="cedu"
+            value="<?php if (isset($this->perfil)) echo $this->perfil['cedula']; ?>">
+        </div>
+        <div class="form-group col-md-6" id="email">
+          <label for="" id='labelemail'>Email <?php if (isset($this->perfil) && $this->perfil['role'] == 1) {
+                                                echo 'UCAB';
+                                              } ?></label>
+          <input disabled type="email" id="eml" class="form-control <?php if (isset($this->_message) && $this->_message['error'] == 4) echo 'is-invalid'; ?>" name="email"
+            value="<?php if (isset($this->perfil)) echo $this->perfil['email']; ?>">
+        </div>
+      </div>
+      <div class="form-group col-md-6" id="telefono" <?php if (isset($this->perfil) && $this->perfil['role'] == 1) {
+                                                        echo 'style="display:none; "';
+                                                      } ?>>
+        <label for="">Telefono</label>
+        <input type="tel" id="tlf" class="form-control <?php if (isset($this->_message) and $this->_message['error'] == 6) echo 'is-invalid'; ?>" name="tlf"
+          value="<?php if (isset($this->perfil)) echo $this->perfil['telefono']; ?>">
+      </div>
+      <div class="form-row col-md-12">
+        <div class="form-group col-md-6" <?php if (isset($this->perfil) && $this->perfil['role'] == 2) {
+                                            echo 'style="display:none; "';
+                                          } ?> id="carrera">
+          <label for="">Carrera</label>
+          <select id="escuela" class="form-control  col-mb-6 <?php if (isset($this->_message) and $this->_message['error'] == 8) echo 'is-invalid'; ?>" name="escu">
+            <option selected value="nones">Elegir Carrera</option>
+            <?php foreach ($this->escuela as $key => $value) { ?>
+              <option value=<?php echo $value['id']; ?> <?php if (isset($this->perfil) and $this->perfil['id_escuela'] == $value['id']) echo 'selected'; ?>><?php echo $value['escuela']; ?></option>
+            <?php } ?>
+          </select>
+        </div>
+      </div>
+      <div class=" col-md-12 col-lg-12 ">
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal"> Guardar cambios</button>
+      </div>
+      <!-- Modal -->
+      <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              Seguro desea guardar los cambios?
+              <div class="modal-footer mt-2">
+                <input type="submit" class="btn btn-primary" value="Confirmar" name='med'>
+    </form>
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+  </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="card-body text-left ml-4" id="horario" style="display: none;">
+
+  <div class="row col-md-12 col-lg-12 d-flex justify-content-center">
+    <div class="row col-md-10 col-lg-10 mb-2">
+      <h5>Filtro De Busqueda De Tutores y Horarios</h5>
+    </div>
+    <div class="row col-md-12 col-lg-12 mb-2">
+      <select class="form-control col-md-3 col-lg-3 mr-1" id="carrerasrch">
+        <option selected value="nones">Elegir Carrera</option>
+        <?php foreach ($this->escuela as $key => $value) { ?>
+          <option value=<?php echo $value['id']; ?> <?php //if (isset($this->perfil) and $this->perfil['id_escuela'] == $value['id']) echo 'selected'; 
+                                                    ?>><?php echo $value['escuela']; ?></option>
+        <?php } ?>
+      </select>
+
+      <select class="form-control col-md-3 col-lg-3 mr-1" id="xmateria" name="materia">
+        <option selected value="nones">Elegir Materia</option>
+        <?php foreach ($this->subject  as $key => $value) {
+          echo  "<option value=" . $value['idmateria'];
+          if ($value['id_materia'] == 0) {
+            echo " disabled" . ">" . $value['materia_des'] . " (No Disponible) </option>";
+          } elseif ($value['id_materia'] > 0) {
+            echo ">" . $value['materia_des'] . "  </option>";
+          }
+        } ?>
+      </select>
+
+      <select class="form-control col-md-3 col-lg-3" id="xtutor" name="tutor" style="display: none;">
+        <option selected value="nones">Elegir Tutor</option>
+        <?php foreach ($this->materias  as $key => $value) {
+          echo  "<option value=" .  $value['id'] . ' >' . $value['tutor'] . '</option>';
+        } ?>
+      </select>
+      <button id="tutorbtn" type="button" class="btn btn-primary btn-sm ml-1" data-toggle="modal" data-target="#exampleModal4" style="display: none;"> Ver perfil</button>
+    </div>
+  </div>
+  <div class="row col-md-12 col-lg-12 text-center">
+    <div class=" col-md-8 col-lg-8 mt-3 text-center">
+      <h5>Inscripciones</h5> <?php //print_r($this->inscripciones);
+                              ?>
+      <table class="col-md-12  table-bordered table-striped table-condensed cf excel-table">
+        <thead>
+          <tr>
+            <th>Dia</th>
+            <th>Materia</th>
+            <th>Hora Inicial</th>
+            <th>Hora Final </th>
+            <th>Profesor</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="productTableBodyE">
+          <?php foreach ($this->enrollment  as $key => $value) {
+            echo '<tr>' . '<td>' . htmlspecialchars($value['dia'], ENT_QUOTES, 'UTF-8') . '</td>' .
+              '<td>' . htmlspecialchars($value['materia_des'], ENT_QUOTES, 'UTF-8') . '</td>' .
+              '<td>' . htmlspecialchars($value['h_inicio'], ENT_QUOTES, 'UTF-8') . '</td>' .
+              '<td>' . htmlspecialchars($value['h_final'], ENT_QUOTES, 'UTF-8') . '</td>' .
+              '<td><button class="btn btn-outline-secondary small-button" data-toggle="popover" data-trigger="focus" data-html="true" title="Tutor: ' . htmlspecialchars($value['tutor'], ENT_QUOTES, 'UTF-8') . '" data-content="Teléfono: ' . htmlspecialchars($value['telefono'], ENT_QUOTES, 'UTF-8') . '<br>Email: ' .
+              htmlspecialchars($value['email'], ENT_QUOTES, 'UTF-8') . '">Ver</button></td>' .
+              '<td><button class="btn btn-outline-secondary small-button" data-toggle="modal" data-target="#exampleModal5'.$value['id']. '">Eliminar</button></td>' . 
+              '<div class="modal fade" id="exampleModal5'.$value['id'].'" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Eliminar Inscripcion</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        Va a cancelar la inscripcion de la Materia : '.htmlspecialchars($value['materia_des'], ENT_QUOTES, 'UTF-8').'
+                        Seguro desea cancelar la Inscripcion?
+                        <form name="form2" method="post" action="" id="myformr">
+                          <input type="hidden" value="'.$value['id'].'" name="enroll">
+                          <div class="modal-footer mt-2">
+                            <input type="submit" class="btn btn-primary" value="Confirmar" name="elmenr">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>'.
+              '</tr>';
+          } ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="row col-md-12 col-lg-12 text-center">
+    <div class=" col-md-8 col-lg-8 mt-3 text-center">
+      <h5>Clases Particulares</h5> <?php //print_r($this->inscripciones);
+                              ?>
+      <table class="col-md-12  table-bordered table-striped table-condensed cf excel-table">
+        <thead>
+          <tr>
+            <th>Tutor</th>
+            <th>Materia</th> 
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="productTableBodyE">
+          <?php foreach ($this->requests  as $key => $value) {
+            echo '<tr>' . '<td>' . htmlspecialchars($value['nombre'], ENT_QUOTES, 'UTF-8') . '</td>' .
+              '<td>' . htmlspecialchars($value['materia_des'], ENT_QUOTES, 'UTF-8'); if($value['status']==1){echo " (Cancelado)";} echo '</td>' .
+              '<td><button ';if($value['status']==1){echo "disabled";}echo' class="btn btn-outline-secondary small-button" data-toggle="modal" data-target="#req'.$value['id_particulares']. '">Modificar</button></td>' . 
+              
+              
+              
+              '<div class="modal fade" id="req'.$value['id_particulares'].'" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Modificar Solicitud</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        
+                        <form name="form2" method="post" action="" id="myformr">
+                          <input type="hidden" value="'.$value['id_particulares'].'" name="reqid">
+                           <textarea class="form-control" aria-label="With textarea" name=about rows="5">'. $value['memo'].'
+                           </textarea>
+                          <div class="modal-footer mt-2">
+                            <input type="submit" class="btn btn-primary" value="Confirmar" name="reqmod">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>'.
+              '</tr>';
+          } ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal fade" id="exampleModal3" tabindex="-1" aria-labelledby="exampleModalLabel">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Horarios Tutor </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <table class="col-md-12  table-bordered table-striped table-condensed cf excel-table">
+            <thead>
+              <tr>
+                <th>Materia</th>
+                <th>Dia</th>
+                <th>Hora Inicial</th>
+                <th>Hora Final </th>
+                <th>Cupos</th>
+                <th>inscribirse</th>
+              </tr>
+            </thead>
+            <tbody id="horariosTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="exampleModal4" tabindex="-1" aria-labelledby="exampleModalLabel">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Perfil Tutor</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="body4">
+          <div class="row" id='tutorProfile'>
+
+          </div>
+          <div class=" col-md-10 col-lg-10  text-center mt-3 ">
+            <h5>Datos Personales</h5>
+            <table class="table table-user-information mt-3">
+              <tbody>
+                <tr>
+                  <td>Nombre:</td>
+                  <td id="nameprofile"></td>
+                </tr>
+                <tr>
+                  <td>Inscrito:</td>
+                  <td id="dateprofile"></td>
+                </tr>
+              </tbody>
+            </table> 
+            <hr>
+            <div id="aboutme" class="col-md-10 col-lg-10"></div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="seehora">Ver Horarios</button>
+          <button type="button" class="btn btn-primary" id="clasespart">Solicitar Clase Particular</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="exampleModal4xx" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Perfil del Tutor</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="row col-md-10 col-lg-10">
+            <div class=" col-md-4 col-lg-4  text-center mt-3 ">
+
+            </div>
+            <div class=" col-md-6 col-lg-6  text-center mt-3 ">
+              <h5>Datos Personales</h5>
+              <table class="table table-user-information mt-3">
+                <tbody>
+                  <tr>
+                    <td>Nombre:</td>
+                    <td id="nameprofile"></td>
+                  </tr>
+                  <tr>
+                    <td>Inscrito:</td>
+                    <td id="dateprofile"></td>
+                  </tr>
+                </tbody>
+              </table>
+
+            </div>
+          </div>
+          <hr>
+          </hr>
+          <div class="modal-footer mt-2">
+            <button type="button" class="btn btn-primary" data-dismiss="modal" id="seehoraxx">Ver Horarios</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> 
+</div>
+
+</div>
+
+
+
+<?php if (Session::accessViewStrict(array('user'))): ?>
+  <p><a href="<?php BASE_URL; ?>post/add">Add a Post</a></p>
+<?php endif; ?>
+<script type="text/javascript">
+  function ficha() {
+    document.getElementById('edita').style.display = 'none';
+    document.getElementById('horario').style.display = 'none';
+    document.getElementById('ficha').style.display = 'block';
+    document.querySelector('.nav-link[onclick="javascript:ficha();"]').classList.add('active');
+    document.querySelector('.nav-link[onclick="javascript:edita();"]').classList.remove('active');
+    document.querySelector('.nav-link[onclick="javascript:horario();"]').classList.remove('active');
+  }
+
+  function edita() {
+    document.getElementById('edita').style.display = 'block';
+    document.getElementById('horario').style.display = 'none';
+    document.getElementById('ficha').style.display = 'none';
+    document.querySelector('.nav-link[onclick="javascript:ficha();"]').classList.remove('active');
+    document.querySelector('.nav-link[onclick="javascript:edita();"]').classList.add('active');
+    document.querySelector('.nav-link[onclick="javascript:horario();"]').classList.remove('active');
+
+  }
+
+  function horario() {
+    document.getElementById('edita').style.display = 'none';
+    document.getElementById('ficha').style.display = 'none';
+    document.getElementById('horario').style.display = 'block';
+    document.querySelector('.nav-link[onclick="javascript:ficha();"]').classList.remove('active');
+    document.querySelector('.nav-link[onclick="javascript:edita();"]').classList.remove('active');
+    document.querySelector('.nav-link[onclick="javascript:horario();"]').classList.add('active');
+
+
+  }
+
+
+  function registok() {
+    document.getElementById("myform").style.display = "block";
+    document.getElementById("success").style.display = "block";
+  }
+</script>

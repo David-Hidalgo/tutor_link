@@ -1,0 +1,108 @@
+<h1>Registro de Perfiles</h1>  
+ 
+<form name="form2" method="post" action="" id="myform" style="display:block;">
+  <div class="form-group  d-flex flex-row-reverse">
+  <div class="form-group col-mb-4" style="display: none;" id="carrera">  
+        <select id="escuela" class="form-control <?php if (isset($this->_message) and $this->_message['error']==8) echo 'is-invalid'; ?>" name="escu">
+          <option selected value="nones">Elegir Carrera</option>
+          <?php foreach ($this->data1 as $key => $value) { ?>
+            <option value= <?php echo $value['id']; ?>  <?php if (isset($this->data) and $this->data['escu']== $value['id']) echo 'selected'; ?> ><?php echo $value['escuela']; ?></option>
+          <?php } ?> 
+        </select>
+      </div> 
+    <div class="form-group col-md-4">
+      <div class="custom-control custom-radio">
+        <input type="radio" id="estudiante" name="customRadio" <?php if (isset($this->data['customRadio']) and $this->data['customRadio']==1) echo "checked";  ?>
+        class="custom-control-input <?php if (isset($this->_message) and $this->_message['error']==0) echo 'is-invalid'; ?>" onclick="javascript:registCheck();" value="1">
+        <label class="custom-control-label" for="estudiante">Estudiante</label>
+      </div>
+      <div class="custom-control custom-radio">
+        <input type="radio"   id="tutor" name="customRadio" <?php if (isset($this->data['customRadio']) and $this->data['customRadio']==2) echo "checked";  ?>
+         class="custom-control-input  <?php if (isset($this->_message) and $this->_message['error']==0) echo 'is-invalid'; ?>" onclick="javascript:registCheck();"  value="2">
+        <label class="custom-control-label" for="tutor">Tutor</label>
+      </div>
+    </div>
+   
+  </div> 
+  <div class="form-group">
+    <label for="">Nombre(s)</label>
+    <input type="text" class="form-control <?php if (isset($this->_message) and $this->_message['error']==1) echo 'is-invalid'; ?>" placeholder="" name="name" 
+    value="<?php if (isset($this->data)) echo $this->data['name']; ?>">
+  </div>
+  <div class="form-group">
+    <label for="">Apellido(s)</label>
+    <input type="text" class="form-control <?php if (isset($this->_message) and $this->_message['error']==2) echo 'is-invalid'; ?>" placeholder="" name="apell"
+    value="<?php if (isset($this->data)) echo $this->data['apell']; ?>">
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-6">
+      <label for="">Cédula</label>
+      <input type="text" placeholder="Introduzca C.I. EJ: V0000000000" class="form-control <?php if (isset($this->_message) and $this->_message['error']==3) echo 'is-invalid'; ?>" name="cedu"
+      value="<?php if (isset($this->data)) echo $this->data['cedu']; ?>">
+    </div>
+    <div class="form-group col-md-6" id="email" style="display: none;">
+    <label for="" id='labelemail'> </label>
+      <input type="email" id="eml" class="form-control <?php if (isset($this->_message) && $this->_message['error']==4) echo 'is-invalid'; ?>" name="email"
+      value="<?php if (isset($this->data)) echo $this->data['email']; ?>">
+    </div>
+    
+    <div class="form-group col-md-6" id = "telefono" style="display: none;">
+      <label for="">Telefono</label>
+      <input type="tel" id="tlf" class="form-control <?php if (isset($this->_message) and $this->_message['error']==6) echo 'is-invalid'; ?>" name="tlf"
+      value="<?php if (isset($this->data)) echo $this->data['tlf']; ?>">
+    </div>
+
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-6">
+      <label for="inputPassword4">Password</label>
+      <input type="password" class="form-control <?php if (isset($this->_message) and $this->_message['error']==7) echo 'is-invalid'; ?>" id="inputPassword4" name="pass"> 
+    </div>
+    <div class="form-group col-md-6">
+      <label for="inputPassword4">Confirmar Password</label>
+      <input type="password" class="form-control <?php if (isset($this->_message) and $this->_message['error']==7) echo 'is-invalid'; ?>" id="inputPassword4" name="pass2">
+    </div>
+  </div>  
+  <input  type="submit" class="btn btn-primary" name="sendrg" value="Enviar"> 
+</form>
+<div class="container" style="display:none;" id="success">
+  
+<div class="d-md-flex  .align-items-start mt-4"> 
+            <h6 class="bd-title mr-2 mt-2" id="content" >Su registro de perfil fue exitoso, puede iniciar sesion aqui:</h6> 
+            <a class="btn btn-md btn-primary my-2 my-md-0" href="<?php echo BASE_URL.'login'?>" title="Login">Login</a>
+          </div>
+</div>
+<script type="text/javascript"> 
+ window.onload = function() {
+  registCheck();
+  <?php 
+if($this->_regok==1) {
+  echo 'registok(); ';}
+?>
+}
+function registCheck() {
+    if (document.getElementById('estudiante').checked) {
+        document.getElementById('labelemail').innerHTML="Email UCAB"
+        document.getElementById('email').style.display = 'block';
+        document.getElementById('carrera').style.display = 'block'; 
+        document.getElementById('telefono').style.display = 'none'; 
+        document.getElementById('tlf').value = '';
+        
+    } 
+    else if(document.getElementById('tutor').checked) {
+        document.getElementById('labelemail').innerHTML="Email"
+        document.getElementById('email').style.display = 'block'; 
+        document.getElementById('carrera').style.display = 'none';  
+        document.getElementById('telefono').style.display = 'block';
+        document.getElementById('escuela').value = 'nones';
+       
+   } 
+} 
+function registok() {
+  document.getElementById("myform").style.display = "none";
+  document.getElementById("success").style.display = "block";
+  }
+</script>
+
+ 
+  
