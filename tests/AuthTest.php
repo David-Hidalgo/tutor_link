@@ -1,63 +1,67 @@
 <?php
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 
-class AuthTest extends TestCase {
-    private $authController;
+/**
+ * Autenticación real del proyecto: userModel::authenticateUser().
+ */
+final class AuthTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        Database::$lastInstance = null;
+    }
 
-    protected function setUp(): void {
-        if (!class_exists('AuthController')) {
-            $this->markTestSkipped('AuthController no existe en este proyecto (test placeholder).');
+    public function testAuthenticateUserReturnsRowWhenFound(): void
+    {
+        if (!class_exists('userModel')) {
+            $this->markTestSkipped('userModel no está cargado.');
         }
-        $this->authController = new AuthController();
+
+        $model = new userModel();
+        $db = Database::$lastInstance;
+        $this->assertInstanceOf(Database::class, $db);
+
+        $email = 'a@b.com';
+        $pass = 'secret';
+        $hash = Hash::getHash('sha1', $pass, HASH_KEY);
+
+        $sql = "SELECT * FROM users " .
+            "WHERE email = '$email'" .
+            "AND pass = '$hash'";
+
+        $expectedRow = ['id' => 1, 'email' => $email];
+        $db->setQueryResult($sql, new DummyStatement($expectedRow));
+
+        $row = $model->authenticateUser($email, $pass);
+        $this->assertSame($expectedRow, $row);
+
+        $this->assertNotEmpty($db->queries);
+        $this->assertSame($sql, end($db->queries));
     }
 
-    // 9. Login Exitoso
-    public function testLoginSuccess() {
-        $response = $this->authController->handleLogin('test@ucab.edu.ve', '123456');
-        $this->assertEquals('success', $response['status']);
-    }
-
-    // 10. Login Fallido - Password Incorrecto
-    public function testLoginWrongPassword() {
-        $response = $this->authController->handleLogin('test@ucab.edu.ve', 'badpass');
-        $this->assertEquals('error', $response['status']);
-    }
-
-    // 11. Login Fallido - Usuario no existe
-    public function testLoginUserNotFound() {
-        $response = $this->authController->handleLogin('ghost@ucab.edu.ve', '123456');
-        $this->assertEquals('error', $response['status']);
-    }
-
-    // 12. Validación de entradas vacías
-    public function testLoginEmptyFields() {
-        $response = $this->authController->handleLogin('', '');
-        $this->assertArrayHasKey('error_msg', $response);
-    }
-
-    // 13. Simulación de ataque SQL Injection (Debe fallar o ser sanitizado)
-    // Esto verifica la corrección de la "Prioridad 0" de tu informe.
-    public function testLoginSqlInjectionAttempt() {
-        $payload = "' OR '1'='1";
-        $response = $this->authController->handleLogin($payload, 'anything');
-        // No debe retornar éxito ni error de sintaxis SQL
-        $this->assertNotEquals('success', $response['status']);
-        $this->assertStringNotContainsString('SQLSTATE', json_encode($response));
-    }
-
-    // 14. Redirección post-login
-    public function testRedirectBasedOnRole() {
-        // Mockear usuario estudiante
-        $url = $this->authController->getRedirectUrl('student');
-        $this->assertEquals('/dashboard/student', $url);
-    }
-
-    // 15. Bloqueo de cuenta (Opcional, si tienes política de intentos)
-    public function testAccountLockoutAfterFailures() {
-        for ($i = 0; $i < 5; $i++) {
-            $this->authController->handleLogin('test@ucab.edu.ve', 'wrong');
+    public function testAuthenticateUserReturnsFalseWhenNotFound(): void
+    {
+        if (!class_exists('userModel')) {
+            $this->markTestSkipped('userModel no está cargado.');
         }
-        $response = $this->authController->handleLogin('test@ucab.edu.ve', '123456');
-        $this->assertEquals('locked', $response['status']); // Ajustar según tu lógica
+
+        $model = new userModel();
+        $db = Database::$lastInstance;
+        $this->assertInstanceOf(Database::class, $db);
+
+        $email = 'missing@b.com';
+        $pass = 'secret';
+        $hash = Hash::getHash('sha1', $pass, HASH_KEY);
+
+        $sql = "SELECT * FROM users " .
+            "WHERE email = '$email'" .
+            "AND pass = '$hash'";
+
+        $db->setQueryResult($sql, new DummyStatement(false));
+
+        $row = $model->authenticateUser($email, $pass);
+        $this->assertFalse($row);
     }
 }

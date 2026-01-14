@@ -1,91 +1,61 @@
 <?php
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 
-class UserTest extends TestCase {
-    private $userModel;
+/**
+ * Tests de usuario basados en userModel real.
+ */
+final class UserTest extends TestCase
+{
+    private userModel $userModel;
 
-    protected function setUp(): void {
-        // Asumiendo que tienes una clase UserModel
-        if (!class_exists('UserModel') && !class_exists('userModel')) {
-            $this->markTestSkipped('UserModel no existe en este proyecto (test placeholder).');
+    protected function setUp(): void
+    {
+        if (!class_exists('userModel')) {
+            $this->markTestSkipped('userModel no está cargado.');
         }
 
-        $this->userModel = new UserModel();
+        Database::$lastInstance = null;
+        $this->userModel = new userModel();
     }
 
-    // 1. Prueba de creación de usuario exitosa
-    public function testCreateUserSuccess() {
-        if (!method_exists($this->userModel, 'create')) {
-            $this->markTestSkipped('UserModel::create() no existe en este proyecto (test placeholder).');
-        }
-        $result = $this->userModel->create('Estudiante', 'test@ucab.edu.ve', '123456');
-        $this->assertTrue($result, "El usuario debería crearse correctamente.");
+    public function testGetUserCIReturnsStatementAndRunsQuery(): void
+    {
+        $db = Database::$lastInstance;
+        $this->assertInstanceOf(Database::class, $db);
+
+        $sql = "SELECT count(id) as 'count' FROM users WHERE cedula = 'V-1'";
+        $db->setQueryResult($sql, new DummyStatement(['count' => 1]));
+
+        $stmt = $this->userModel->getUserCI('V-1');
+        $this->assertInstanceOf(DummyStatement::class, $stmt);
+
+        $this->assertNotEmpty($db->queries);
+        $this->assertSame($sql, end($db->queries));
     }
 
-    // 2. Validación de contraseña hasheada (Control AC-02 del informe)
-    public function testPasswordIsHashed() {
-        if (!method_exists($this->userModel, 'findByEmail')) {
-            $this->markTestSkipped('UserModel::findByEmail() no existe en este proyecto (test placeholder).');
-        }
-        $user = $this->userModel->findByEmail('test@ucab.edu.ve');
-        $this->assertNotEquals('123456', $user['password'], "La contraseña no debe guardarse en texto plano.");
-        $this->assertTrue(password_verify('123456', $user['password']), "El hash debe coincidir con Argon2/Bcrypt.");
+    public function testGetUserReturnsFetchedRow(): void
+    {
+        $db = Database::$lastInstance;
+        $this->assertInstanceOf(Database::class, $db);
+
+        $sql = "SELECT * FROM users WHERE id = 5 AND code = 'abc'";
+        $expected = ['id' => 5, 'code' => 'abc'];
+        $db->setQueryResult($sql, new DummyStatement($expected));
+
+        $row = $this->userModel->getUser(5, 'abc');
+        $this->assertSame($expected, $row);
     }
 
-    // 3. Prueba de duplicidad de email
-    public function testCreateUserDuplicateEmail() {
-        if (!method_exists($this->userModel, 'create')) {
-            $this->markTestSkipped('UserModel::create() no existe en este proyecto (test placeholder).');
-        }
+    public function testActivateUserRunsUpdateQuery(): void
+    {
+        $db = Database::$lastInstance;
+        $this->assertInstanceOf(Database::class, $db);
 
-        $this->expectException(Exception::class); // O el manejo de error que tengas
-        $this->userModel->create('Otro', 'test@ucab.edu.ve', 'pass');
-    }
+        $this->userModel->activateUser(5, 'abc');
 
-    // 4. Búsqueda de usuario existente
-    public function testFindUserByEmailFound() {
-        if (!method_exists($this->userModel, 'findByEmail')) {
-            $this->markTestSkipped('UserModel::findByEmail() no existe en este proyecto (test placeholder).');
-        }
-        $user = $this->userModel->findByEmail('test@ucab.edu.ve');
-        $this->assertIsArray($user);
-        $this->assertEquals('test@ucab.edu.ve', $user['email']);
-    }
-
-    // 5. Búsqueda de usuario inexistente
-    public function testFindUserByEmailNotFound() {
-        if (!method_exists($this->userModel, 'findByEmail')) {
-            $this->markTestSkipped('UserModel::findByEmail() no existe en este proyecto (test placeholder).');
-        }
-        $user = $this->userModel->findByEmail('noexiste@ucab.edu.ve');
-        $this->assertFalse($user);
-    }
-
-    // 6. Actualización de perfil
-    public function testUpdateUserProfile() {
-        if (!method_exists($this->userModel, 'update')) {
-            $this->markTestSkipped('UserModel::update() no existe en este proyecto (test placeholder).');
-        }
-        $update = $this->userModel->update('test@ucab.edu.ve', ['name' => 'Nuevo Nombre']);
-        $this->assertTrue($update);
-    }
-
-    // 7. Validación de roles (RBAC - Control A.5.15)
-    public function testUserRoleAssignment() {
-        if (!method_exists($this->userModel, 'findByEmail')) {
-            $this->markTestSkipped('UserModel::findByEmail() no existe en este proyecto (test placeholder).');
-        }
-        $user = $this->userModel->findByEmail('test@ucab.edu.ve');
-        // Asumiendo que guardas el rol en la BD
-        $this->assertContains($user['role'], ['admin', 'student', 'tutor']);
-    }
-
-    // 8. Eliminación de usuario (Limpieza)
-    public function testDeleteUser() {
-        if (!method_exists($this->userModel, 'delete')) {
-            $this->markTestSkipped('UserModel::delete() no existe en este proyecto (test placeholder).');
-        }
-        $delete = $this->userModel->delete('test@ucab.edu.ve');
-        $this->assertTrue($delete);
+        $this->assertNotEmpty($db->queries);
+        $this->assertSame("UPDATE users SET status = 1 WHERE id = 5 and code = 'abc'", end($db->queries));
     }
 }

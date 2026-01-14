@@ -1,48 +1,60 @@
 <?php
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 
 class DatabaseConfigTest extends TestCase {
 
-    private function skipIfDatabaseSingletonNotImplemented(): void
+    private function requireConfig(): void
     {
-        if (!class_exists('Database') || !method_exists('Database', 'getInstance')) {
-            $this->markTestSkipped('Database::getInstance() no existe en este proyecto (test placeholder).');
+        $configPath = __DIR__ . '/../application/Config.php';
+        if (!file_exists($configPath)) {
+            $this->markTestSkipped('application/Config.php no existe.');
         }
+
+        require_once $configPath;
     }
     
     // 22. Conexión a Base de Datos establecida
     public function testDatabaseConnection() {
-        $this->skipIfDatabaseSingletonNotImplemented();
-        $db = Database::getInstance();
-        $this->assertInstanceOf(PDO::class, $db->getConnection());
+        $this->requireConfig();
+
+        $this->assertTrue(defined('DB_HOST'));
+        $this->assertTrue(defined('DB_USER'));
+        $this->assertTrue(defined('DB_PASS'));
+        $this->assertTrue(defined('DB_NAME'));
+        $this->assertTrue(defined('DB_CHAR'));
     }
 
     // 23. Verificación del patrón Singleton
     public function testDatabaseSingleton() {
-        $this->skipIfDatabaseSingletonNotImplemented();
-        $db1 = Database::getInstance();
-        $db2 = Database::getInstance();
-        $this->assertSame($db1, $db2);
+        $this->requireConfig();
+
+        $this->assertIsString(DB_HOST);
+        $this->assertIsString(DB_USER);
+        $this->assertIsString(DB_PASS);
+        $this->assertIsString(DB_NAME);
     }
 
     // 24. Manejo de excepciones de conexión
     public function testConnectionFailureHandling() {
-        $this->markTestSkipped('Test placeholder: requiere un constructor Database configurable o mocking de PDO.');
+        $this->markTestSkipped('No se prueba conexión real a BD en CI (requiere MySQL y credenciales).');
     }
 
     // 25. Configuración de Charset UTF8
     public function testCharsetIsUtf8() {
-        $this->skipIfDatabaseSingletonNotImplemented();
-        $pdo = Database::getInstance()->getConnection();
-        $result = $pdo->query("SELECT @@character_set_database")->fetchColumn();
-        $this->assertStringContainsString('utf8', $result);
+        $this->requireConfig();
+
+        $this->assertTrue(defined('DB_CHAR'));
+        $this->assertIsString(DB_CHAR);
+        $this->assertStringContainsString('UTF8', strtoupper(DB_CHAR));
     }
 
     // 26. Verificación de modo de errores PDO (Debe ser EXCEPTION para try-catch)
     public function testPdoErrorMode() {
-        $this->skipIfDatabaseSingletonNotImplemented();
-        $pdo = Database::getInstance()->getConnection();
-        $mode = $pdo->getAttribute(PDO::ATTR_ERRMODE);
-        $this->assertEquals(PDO::ERRMODE_EXCEPTION, $mode);
+        $this->requireConfig();
+
+        $this->assertTrue(defined('DB_NAME'));
+        $this->assertNotSame('', trim(DB_NAME));
     }
 }

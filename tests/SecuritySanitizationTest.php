@@ -31,17 +31,6 @@ class SecuritySanitizationTest extends TestCase {
         $this->assertFalse($isValid);
     }
 
-    // 20. Token CSRF (Si lo implementaste en formularios)
-    public function testCsrfTokenGeneration() {
-        if (!function_exists('generateCsrfToken')) {
-            $this->markTestSkipped('generateCsrfToken() no existe en este proyecto (test placeholder).');
-        }
-
-        $token = generateCsrfToken(); // Tu función
-        $this->assertNotEmpty($token);
-        $this->assertEquals(32, strlen(bin2hex(random_bytes(16)))); // Longitud típica
-    }
-
     // 21. Headers de Seguridad (Mock response)
     // Simula que tu app añade headers seguros
     public function testSecurityHeadersConfig() {
