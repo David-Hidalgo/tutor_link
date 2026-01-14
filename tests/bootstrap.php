@@ -6,6 +6,25 @@ if (file_exists($vendorAutoload)) {
     require_once $vendorAutoload;
 }
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    @session_start();
+}
+
+if (!isset($_SESSION) || !is_array($_SESSION)) {
+    $_SESSION = [];
+}
+
+if (!isset($_SESSION['id'])) {
+    $_SESSION['id'] = 1;
+}
+
+if (!function_exists('generateCsrfToken')) {
+    function generateCsrfToken(): string
+    {
+        return bin2hex(random_bytes(16));
+    }
+}
+
 use PHPUnit\Framework\TestCase;
 
 /**
