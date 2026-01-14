@@ -18,12 +18,18 @@ if (!isset($_SESSION['id'])) {
     $_SESSION['id'] = 1;
 }
 
+$configPath = __DIR__ . '/../application/Config.php';
+if (file_exists($configPath)) {
+    require_once $configPath;
+}
+
 /**
  * ------------------------------------------------------------
  * Test doubles (stubs) to avoid real DB / hashing dependencies
  * ------------------------------------------------------------
  */
 
+// Si la app no tiene Config.php, usar fallback para tests
 if (!defined('HASH_KEY')) {
     define('HASH_KEY', 'test_hash_key');
 }
