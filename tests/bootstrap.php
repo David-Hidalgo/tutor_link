@@ -48,12 +48,6 @@ if (!class_exists('DummyStatement')) {
             return $this->fetchResult;
         }
 
-        public function fetchall(): array
-        {
-            // El código usa "fetchall()" en algunos modelos
-            return $this->fetchAllResult;
-        }
-
         public function fetchAll(): array
         {
             return $this->fetchAllResult;
