@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+$vendorAutoload = __DIR__ . '/../vendor/autoload.php';
+if (file_exists($vendorAutoload)) {
+    require_once $vendorAutoload;
+}
+
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -127,7 +132,7 @@ if (!class_exists('Database')) {
  * Load code under test
  * -----------------------
  */
-$root = realpath(__DIR__ . '/../../') ?: (__DIR__ . '/../../');
+$root = realpath(__DIR__ . '/..') ?: (__DIR__ . '/..');
 
 $uploadPath = __DIR__ . '/class.upload.php';
 if (file_exists($uploadPath)) {
